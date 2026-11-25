@@ -1,0 +1,93 @@
+# Integración continua: instala desde el bloqueo, ejecuta pruebas y, en push a develop/main,
+# construye UNA imagen identificada por el SHA y la publica como artefacto del run.
+# Un fallo de pruebas detiene el pipeline: no se usa continue-on-error ni "|| true".
+name: CI
+
+on:
+  push:
+    branches: [main, develop, 'feature/**']
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  pruebas:
+    name: Pruebas (npm ci + npm test)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Versiones de herramientas
+        run: node --version && npm --version
+
+      - name: Instalar desde package-lock.json
+        run: npm ci
+
+      - name: Ejecutar pruebas
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee resultado-pruebas.log
+
+      - name: Conservar registro de pruebas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pruebas-${{ github.sha }}
+          path: resultado-pruebas.log
+          retention-days: 30
+
+  imagen:
+    name: Imagen y artefacto
+    needs: pruebas
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Construir y empaquetar la imagen
+        run: bash scripts/empaquetar-imagen.sh "${{ github.sha }}" "${{ github.run_id }}" artefacto
+
+      - name: Publicar artefacto identificado
+        uses: actions/upload-artifact@v4
+        with:
+          name: imagen-${{ github.sha }}
+          path: artefacto/
+          retention-days: 30
+          if-no-files-found: error
+
+  staging-develop:
+    name: Despliegue automático de develop en staging
+    needs: imagen
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    runs-on: [self-hosted, linux, laboratorio]
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: imagen-${{ github.sha }}
+          path: artefacto
+
+      - name: Promover a staging (puerto 3001)
+        run: bash scripts/promover.sh staging artefacto "${{ github.sha }}" "${{ github.run_id }}"
+
+      - name: Conservar recibo
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: recibo-staging-${{ github.sha }}-${{ github.run_attempt }}
+          path: recibos/
+          if-no-files-found: warn

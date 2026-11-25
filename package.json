@@ -1,0 +1,17 @@
+{
+  "name": "inventario-equipos",
+  "version": "1.0.0",
+  "description": "Inventario de equipos tecnológicos: API Node sin dependencias e interfaz web (práctica de gestión de la configuración del software).",
+  "type": "module",
+  "private": true,
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test --test-reporter=spec \"test/**/*.test.js\"",
+    "test:tap": "node --test --test-reporter=tap \"test/**/*.test.js\""
+  },
+  "license": "UNLICENSED"
+}

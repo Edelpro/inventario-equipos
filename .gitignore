@@ -1,0 +1,21 @@
+# Dependencias y caches (se reconstruyen con npm ci)
+node_modules/
+.npm/
+.cache/
+coverage/
+
+# Secretos y configuración local (documentada en .env.example)
+.env
+.env.*
+!.env.example
+
+# Artefactos generados localmente (se publican desde GitHub Actions, no se versionan)
+artefacto/
+*.tar
+*.tar.gz
+*.zip
+
+# Registros temporales
+npm-debug.log*
+*.log
+!evidencias/**/*.log

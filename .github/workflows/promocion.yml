@@ -1,0 +1,75 @@
+# Promoción manual del MISMO artefacto de un push exitoso a main: primero staging, luego producción.
+# No reconstruye la imagen: descarga el artefacto del run indicado y verifica su identidad.
+name: Promocion
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'run_id del workflow CI (push a main exitoso) que produjo el artefacto'
+        required: true
+      sha:
+        description: 'SHA completo del commit de fusión en main'
+        required: true
+      entorno:
+        description: 'Entorno destino'
+        required: true
+        type: choice
+        options: [staging, produccion]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  validar-origen:
+    name: Validar que el run es un push exitoso a main
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Consultar el run de origen
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ inputs.run_id }}
+          SHA: ${{ inputs.sha }}
+        run: |
+          set -euo pipefail
+          datos="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}")"
+          rama="$(jq -r .head_branch <<<"$datos")"
+          evento="$(jq -r .event <<<"$datos")"
+          conclusion="$(jq -r .conclusion <<<"$datos")"
+          sha_run="$(jq -r .head_sha <<<"$datos")"
+          flujo="$(jq -r .name <<<"$datos")"
+          echo "run=${RUN_ID} flujo=${flujo} rama=${rama} evento=${evento} conclusion=${conclusion} sha=${sha_run}"
+          [[ "$flujo" == "CI" ]]          || { echo "El run no pertenece al workflow CI"; exit 1; }
+          [[ "$rama" == "main" ]]         || { echo "El run no es de main"; exit 1; }
+          [[ "$evento" == "push" ]]       || { echo "El run no es un push"; exit 1; }
+          [[ "$conclusion" == "success" ]] || { echo "El run no terminó con éxito"; exit 1; }
+          [[ "$sha_run" == "$SHA" ]]      || { echo "El SHA indicado no coincide con el del run"; exit 1; }
+
+  promover:
+    name: Promover a ${{ inputs.entorno }}
+    needs: validar-origen
+    runs-on: [self-hosted, linux, laboratorio]
+    environment: ${{ inputs.entorno }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.sha }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: imagen-${{ inputs.sha }}
+          path: artefacto
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Promover sin reconstruir
+        run: bash scripts/promover.sh "${{ inputs.entorno }}" artefacto "${{ inputs.sha }}" "${{ inputs.run_id }}"
+
+      - name: Conservar recibo
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: recibo-${{ inputs.entorno }}-${{ inputs.sha }}-${{ github.run_id }}
+          path: recibos/
+          if-no-files-found: warn
