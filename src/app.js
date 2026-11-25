@@ -3,6 +3,7 @@
 import { crearAlmacen } from './almacen.js';
 import { validarProducto, validarUmbral } from './validacion.js';
 import { ErrorCuerpo, leerCuerpoJson, responderError, responderJson } from './http.js';
+import { esRutaEstatica, servirEstatico } from './estaticos.js';
 
 const METODOS_POR_RUTA = new Map([
   ['/health', ['GET']],
@@ -51,6 +52,10 @@ export function crearAplicacion({ revision = 'desconocida', entorno = 'local' } 
           return responderError(res, 400, codigo, mensaje, campo);
         }
         return responderJson(res, 200, almacen.listarStockBajo(resultado.valor));
+      }
+
+      if (metodo === 'GET' && esRutaEstatica(ruta)) {
+        return await servirEstatico(ruta, res);
       }
 
       return responderError(res, 404, 'recurso_no_encontrado', `No existe ${metodo} ${ruta}.`);

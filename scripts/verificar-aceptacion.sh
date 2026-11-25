@@ -8,7 +8,7 @@ set -euo pipefail
 #   salud    -> starter mínimo (solo /health)
 #   api      -> RF-01, RF-02 y RF-03 de la API
 #   completa -> API más interfaz
-NIVEL_ACEPTACION="api"
+NIVEL_ACEPTACION="completa"
 
 BASE="${1:?Falta la URL base, por ejemplo http://127.0.0.1:3001}"
 SHA="${2:?Falta el SHA esperado}"

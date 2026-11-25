@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Inventario de equipos tecnológicos</title>
+  <link rel="stylesheet" href="/estilos.css">
+</head>
+<body>
+  <main>
+    <h1>Inventario de equipos tecnológicos</h1>
+    <p class="aviso">Laboratorio: los datos se guardan en memoria y se pierden al reiniciar, desplegar o hacer rollback.</p>
+
+    <section aria-labelledby="titulo-crear">
+      <h2 id="titulo-crear">Crear equipo</h2>
+      <form id="form-crear" novalidate>
+        <label for="nombre">Nombre</label>
+        <input id="nombre" name="nombre" type="text" autocomplete="off">
+        <label for="stock">Stock</label>
+        <input id="stock" name="stock" type="text" inputmode="numeric" autocomplete="off">
+        <button type="submit" id="crear">Crear</button>
+      </form>
+      <p id="mensaje" class="mensaje" role="status" aria-live="polite"></p>
+    </section>
+
+    <section aria-labelledby="titulo-listado">
+      <h2 id="titulo-listado">Listado</h2>
+      <div class="filtros">
+        <label><input id="solo-stock-bajo" type="checkbox"> Solo stock bajo</label>
+        <label for="umbral">Umbral</label>
+        <input id="umbral" type="text" inputmode="numeric" value="3" size="10">
+        <button type="button" id="consultar">Consultar</button>
+      </div>
+      <p id="resumen"></p>
+      <table>
+        <thead><tr><th>Id</th><th>Nombre</th><th>Stock</th></tr></thead>
+        <tbody id="cuerpo-tabla"></tbody>
+      </table>
+    </section>
+  </main>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
